@@ -5,6 +5,7 @@ describe("trust-verifier", () => {
   it("should verify privacy when all conditions met", () => {
     const report = verifyPrivacy({
       model: "llama-3.3-70b",
+      responseModel: "llama-3.3-70b",
       responseHeaders: { server: "venice-api" },
       requestParams: {
         enable_web_search: false,
@@ -21,6 +22,7 @@ describe("trust-verifier", () => {
   it("should fail verification when web search is enabled", () => {
     const report = verifyPrivacy({
       model: "llama-3.3-70b",
+      responseModel: "llama-3.3-70b",
       responseHeaders: {},
       requestParams: {
         enable_web_search: true,
@@ -36,6 +38,7 @@ describe("trust-verifier", () => {
   it("should fail verification when venice system prompt is included", () => {
     const report = verifyPrivacy({
       model: "llama-3.3-70b",
+      responseModel: "llama-3.3-70b",
       responseHeaders: {},
       requestParams: {
         enable_web_search: false,
@@ -50,6 +53,7 @@ describe("trust-verifier", () => {
   it("should fail verification for unknown model", () => {
     const report = verifyPrivacy({
       model: "unknown-model",
+      responseModel: "unknown-model",
       responseHeaders: {},
       requestParams: {
         enable_web_search: false,
@@ -65,6 +69,7 @@ describe("trust-verifier", () => {
     const before = Date.now();
     const report = verifyPrivacy({
       model: "deepseek-r1-671b",
+      responseModel: "deepseek-r1-671b",
       responseHeaders: { server: "venice-api" },
       requestParams: {
         enable_web_search: false,
@@ -81,6 +86,7 @@ describe("trust-verifier", () => {
   it("should always set data_retention to none", () => {
     const report = verifyPrivacy({
       model: "llama-3.3-70b",
+      responseModel: "llama-3.3-70b",
       responseHeaders: {},
       requestParams: {
         enable_web_search: true,
@@ -94,6 +100,7 @@ describe("trust-verifier", () => {
   it("should handle missing response headers gracefully", () => {
     const report = verifyPrivacy({
       model: "llama-3.3-70b",
+      responseModel: "llama-3.3-70b",
       responseHeaders: {},
       requestParams: {
         enable_web_search: false,
@@ -101,14 +108,18 @@ describe("trust-verifier", () => {
       },
     });
 
-    expect(report.verified).toBe(true);
-    expect(report.privacy_mode).toBe(true);
+    expect(report.verified).toBe(false);
+    expect(report.privacy_mode).toBe(false);
     expect(report.attestation).not.toContain("venice_api_response_confirmed");
+    expect(report.attestation).toContain(
+      "WARN: missing venice-specific response headers"
+    );
   });
 
   it("should fail verification when all conditions are violated (tampered response)", () => {
     const report = verifyPrivacy({
       model: "gpt-4-turbo",
+      responseModel: "gpt-4-turbo",
       responseHeaders: {},
       requestParams: {
         enable_web_search: true,
@@ -126,6 +137,7 @@ describe("trust-verifier", () => {
   it("should include attestation details for verified deepseek model", () => {
     const report = verifyPrivacy({
       model: "deepseek-r1-671b",
+      responseModel: "deepseek-r1-671b",
       responseHeaders: { "x-served-by": "venice-inference" },
       requestParams: {
         enable_web_search: false,

@@ -9,6 +9,7 @@ export interface TrustReport {
 
 export interface VerificationInput {
   model: string;
+  responseModel: string;
   responseHeaders: Record<string, string>;
   requestParams: {
     enable_web_search: boolean;
@@ -38,20 +39,33 @@ export function verifyPrivacy(input: VerificationInput): TrustReport {
 
   // Check 3: Model is a known Venice model
   const knownModels = ["llama-3.3-70b", "deepseek-r1-671b"];
-  if (knownModels.includes(input.model)) {
+  if (input.responseModel !== input.model) {
+    verified = false;
+    checks.push(
+      `WARN: response model mismatch expected ${input.model} got ${input.responseModel}`
+    );
+  } else {
+    checks.push("model_matches_response");
+  }
+
+  if (knownModels.includes(input.responseModel)) {
     checks.push("known_venice_model");
   } else {
     verified = false;
-    checks.push(`WARN: unknown model ${input.model}`);
+    checks.push(`WARN: unknown model ${input.responseModel}`);
   }
 
   // Check 4: Response came from Venice API (check headers if available)
-  const serverHeader =
-    input.responseHeaders["server"] ??
-    input.responseHeaders["x-served-by"] ??
-    "";
-  if (serverHeader || Object.keys(input.responseHeaders).length > 0) {
+  const serverHeader = (input.responseHeaders["server"] ?? "").toLowerCase();
+  const xServedBy = (input.responseHeaders["x-served-by"] ?? "").toLowerCase();
+  const hasVeniceHeaders =
+    serverHeader.includes("venice") || xServedBy.includes("venice");
+
+  if (hasVeniceHeaders) {
     checks.push("venice_api_response_confirmed");
+  } else {
+    verified = false;
+    checks.push("WARN: missing venice-specific response headers");
   }
 
   const attestation = [

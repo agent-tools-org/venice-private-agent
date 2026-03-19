@@ -3,6 +3,7 @@ import { VeniceClient } from "./llm/venice-client.js";
 import { PrivateAnalyst } from "./agent/private-analyst.js";
 import { verifyPrivacy, logTrustReport } from "./agent/trust-verifier.js";
 import { type Address } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -18,9 +19,11 @@ async function main(): Promise<void> {
     model: "llama-3.3-70b",
   });
 
-  const walletAddress = config.privateKey.startsWith("0x")
-    ? (config.privateKey as Address)
-    : (`0x${config.privateKey}` as Address);
+  const privateKeyHex = config.privateKey.startsWith("0x")
+    ? (config.privateKey as `0x${string}`)
+    : (`0x${config.privateKey}` as `0x${string}`);
+  const account = privateKeyToAccount(privateKeyHex as `0x${string}`);
+  const walletAddress = account.address;
 
   console.log("🔒 Venice Private Agent starting...");
   console.log(`Chain: ${config.baseChain.name} (ID: ${config.baseChain.chainId})`);
@@ -34,7 +37,7 @@ async function main(): Promise<void> {
   while (running) {
     try {
       console.log("\n📊 Reading on-chain portfolio...");
-      const { portfolio, recommendation, responseHeaders } =
+      const { portfolio, recommendation, responseModel, responseHeaders } =
         await analyst.run(walletAddress);
 
       console.log(`Portfolio: ${portfolio.balances.length} tokens tracked`);
@@ -42,6 +45,7 @@ async function main(): Promise<void> {
 
       const trustReport = verifyPrivacy({
         model: "llama-3.3-70b",
+        responseModel,
         responseHeaders,
         requestParams: {
           enable_web_search: false,

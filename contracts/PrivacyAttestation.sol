@@ -14,6 +14,7 @@ contract PrivacyAttestation {
     }
 
     Attestation[] private _attestations;
+    uint256 private _privateCount;
 
     event AttestationLogged(
         address indexed agent,
@@ -41,6 +42,10 @@ contract PrivacyAttestation {
             })
         );
 
+        if (privateMode) {
+            _privateCount++;
+        }
+
         emit AttestationLogged(
             msg.sender,
             model,
@@ -63,12 +68,6 @@ contract PrivacyAttestation {
 
     /// @notice Count attestations where privateMode is true
     function getPrivateAttestationCount() external view returns (uint256) {
-        uint256 count = 0;
-        for (uint256 i = 0; i < _attestations.length; i++) {
-            if (_attestations[i].privateMode) {
-                count++;
-            }
-        }
-        return count;
+        return _privateCount;
     }
 }

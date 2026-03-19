@@ -73,6 +73,7 @@ async function demo(): Promise<void> {
   console.log("Step 4: Running Trust Verification...");
   const trustReport = verifyPrivacy({
     model: "llama-3.3-70b",
+    responseModel: "llama-3.3-70b",
     responseHeaders: {
       "content-type": "application/json",
       server: "venice-api",
@@ -147,6 +148,7 @@ async function demo(): Promise<void> {
   console.log("Step 7: Privacy attestation verification...");
   const attestationCheck = verifyPrivacy({
     model: "deepseek-r1-671b",
+    responseModel: "deepseek-r1-671b",
     responseHeaders: {
       "content-type": "application/json",
       "x-served-by": "venice-inference",

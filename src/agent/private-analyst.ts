@@ -1,4 +1,4 @@
-import { createPublicClient, http, formatEther, type Address } from "viem";
+import { createPublicClient, http, formatEther, formatUnits, type Address } from "viem";
 import { base } from "viem/chains";
 import { VeniceClient, type VeniceModel } from "../llm/venice-client.js";
 
@@ -81,10 +81,7 @@ export class PrivateAnalyst {
         args: [walletAddress],
       });
 
-      const formatted =
-        token.decimals === 18
-          ? formatEther(raw)
-          : (Number(raw) / 10 ** token.decimals).toString();
+      const formatted = formatUnits(raw, token.decimals);
 
       balances.push({
         symbol: token.symbol,
@@ -114,6 +111,7 @@ export class PrivateAnalyst {
   async run(walletAddress: Address): Promise<{
     portfolio: PortfolioData;
     recommendation: Recommendation;
+    responseModel: string;
     responseHeaders: Record<string, string>;
   }> {
     const portfolio = await this.readPortfolio(walletAddress);
@@ -126,6 +124,7 @@ export class PrivateAnalyst {
     return {
       portfolio,
       recommendation,
+      responseModel: response.model,
       responseHeaders: response.headers ?? {},
     };
   }
