@@ -1,0 +1,93 @@
+import { describe, it, expect } from "vitest";
+import { verifyPrivacy, type TrustReport } from "../src/agent/trust-verifier.js";
+
+describe("trust-verifier", () => {
+  it("should verify privacy when all conditions met", () => {
+    const report = verifyPrivacy({
+      model: "llama-3.3-70b",
+      responseHeaders: { server: "venice-api" },
+      requestParams: {
+        enable_web_search: false,
+        include_venice_system_prompt: false,
+      },
+    });
+
+    expect(report.verified).toBe(true);
+    expect(report.privacy_mode).toBe(true);
+    expect(report.data_retention).toBe("none");
+    expect(report.model).toBe("llama-3.3-70b");
+  });
+
+  it("should fail verification when web search is enabled", () => {
+    const report = verifyPrivacy({
+      model: "llama-3.3-70b",
+      responseHeaders: {},
+      requestParams: {
+        enable_web_search: true,
+        include_venice_system_prompt: false,
+      },
+    });
+
+    expect(report.verified).toBe(false);
+    expect(report.privacy_mode).toBe(false);
+    expect(report.attestation).toContain("WARN: web_search was enabled");
+  });
+
+  it("should fail verification when venice system prompt is included", () => {
+    const report = verifyPrivacy({
+      model: "llama-3.3-70b",
+      responseHeaders: {},
+      requestParams: {
+        enable_web_search: false,
+        include_venice_system_prompt: true,
+      },
+    });
+
+    expect(report.verified).toBe(false);
+    expect(report.attestation).toContain("WARN: venice_system_prompt was included");
+  });
+
+  it("should fail verification for unknown model", () => {
+    const report = verifyPrivacy({
+      model: "unknown-model",
+      responseHeaders: {},
+      requestParams: {
+        enable_web_search: false,
+        include_venice_system_prompt: false,
+      },
+    });
+
+    expect(report.verified).toBe(false);
+    expect(report.attestation).toContain("WARN: unknown model unknown-model");
+  });
+
+  it("should include timestamp in report", () => {
+    const before = Date.now();
+    const report = verifyPrivacy({
+      model: "deepseek-r1-671b",
+      responseHeaders: { server: "venice-api" },
+      requestParams: {
+        enable_web_search: false,
+        include_venice_system_prompt: false,
+      },
+    });
+    const after = Date.now();
+
+    expect(report.timestamp).toBeGreaterThanOrEqual(before);
+    expect(report.timestamp).toBeLessThanOrEqual(after);
+    expect(report.model).toBe("deepseek-r1-671b");
+  });
+
+  it("should always set data_retention to none", () => {
+    const report = verifyPrivacy({
+      model: "llama-3.3-70b",
+      responseHeaders: {},
+      requestParams: {
+        enable_web_search: true,
+        include_venice_system_prompt: true,
+      },
+    });
+
+    expect(report.data_retention).toBe("none");
+  });
+});
