@@ -1,0 +1,13 @@
+{
+  "deployer": "0x3614A5bD7f206d4f9e89c6aEdC4d774e6d534D78",
+  "contractName": "PrivacyAttestation",
+  "contractAddress": "0x61f1c8357a4c44653869f4dc8e819e173d2f4a60",
+  "deployTxHash": "0x20dfbe7ee77f40509635dab536ca85dbf78cc7d1d5009166d65750c64ab8a54a",
+  "deployBlock": 17995081,
+  "gasUsed": 5000000,
+  "effectiveGasPrice": 0,
+  "explorerUrl": "https://sepoliascan.status.network/address/0x61f1c8357a4c44653869f4dc8e819e173d2f4a60",
+  "network": "Status Network Sepolia",
+  "chainId": 1660990954,
+  "timestamp": "2026-03-19T02:31:01.386Z"
+}
