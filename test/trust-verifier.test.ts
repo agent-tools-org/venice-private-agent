@@ -90,4 +90,53 @@ describe("trust-verifier", () => {
 
     expect(report.data_retention).toBe("none");
   });
+
+  it("should handle missing response headers gracefully", () => {
+    const report = verifyPrivacy({
+      model: "llama-3.3-70b",
+      responseHeaders: {},
+      requestParams: {
+        enable_web_search: false,
+        include_venice_system_prompt: false,
+      },
+    });
+
+    expect(report.verified).toBe(true);
+    expect(report.privacy_mode).toBe(true);
+    expect(report.attestation).not.toContain("venice_api_response_confirmed");
+  });
+
+  it("should fail verification when all conditions are violated (tampered response)", () => {
+    const report = verifyPrivacy({
+      model: "gpt-4-turbo",
+      responseHeaders: {},
+      requestParams: {
+        enable_web_search: true,
+        include_venice_system_prompt: true,
+      },
+    });
+
+    expect(report.verified).toBe(false);
+    expect(report.privacy_mode).toBe(false);
+    expect(report.attestation).toContain("WARN: web_search was enabled");
+    expect(report.attestation).toContain("WARN: venice_system_prompt was included");
+    expect(report.attestation).toContain("WARN: unknown model gpt-4-turbo");
+  });
+
+  it("should include attestation details for verified deepseek model", () => {
+    const report = verifyPrivacy({
+      model: "deepseek-r1-671b",
+      responseHeaders: { "x-served-by": "venice-inference" },
+      requestParams: {
+        enable_web_search: false,
+        include_venice_system_prompt: false,
+      },
+    });
+
+    expect(report.verified).toBe(true);
+    expect(report.model).toBe("deepseek-r1-671b");
+    expect(report.attestation).toContain("known_venice_model");
+    expect(report.attestation).toContain("venice_api_response_confirmed");
+    expect(report.attestation).toContain("Data Retention: none");
+  });
 });

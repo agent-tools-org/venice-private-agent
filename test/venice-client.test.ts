@@ -141,4 +141,65 @@ describe("VeniceClient", () => {
     );
     expect(body.model).toBe("llama-3.3-70b");
   });
+
+  it("should throw with status 429 on rate limiting", async () => {
+    const rateLimitResponse = {
+      ok: false,
+      status: 429,
+      headers: new Headers(),
+      text: () => Promise.resolve("Rate limit exceeded"),
+    } as unknown as Response;
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(rateLimitResponse));
+
+    await expect(
+      client.chat("llama-3.3-70b", [{ role: "user", content: "test" }])
+    ).rejects.toThrow("Venice API error 429: Rate limit exceeded");
+  });
+
+  it("should allow model switching to deepseek-r1-671b", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(createMockResponse("deep result"));
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await client.privateQuery("Analyze portfolio", "deepseek-r1-671b");
+
+    const body = JSON.parse(
+      (mockFetch.mock.calls[0] as [string, RequestInit])[1].body as string
+    );
+    expect(body.model).toBe("deepseek-r1-671b");
+    expect(response.choices[0].message.content).toBe("deep result");
+  });
+
+  it("should not include venice params when not provided", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(createMockResponse("ok"));
+    vi.stubGlobal("fetch", mockFetch);
+
+    await client.chat("llama-3.3-70b", [{ role: "user", content: "test" }]);
+
+    const body = JSON.parse(
+      (mockFetch.mock.calls[0] as [string, RequestInit])[1].body as string
+    );
+    expect(body.enable_web_search).toBeUndefined();
+    expect(body.include_venice_system_prompt).toBeUndefined();
+  });
+
+  it("should throw with status 403 on invalid API key", async () => {
+    const forbiddenResponse = {
+      ok: false,
+      status: 403,
+      headers: new Headers(),
+      text: () => Promise.resolve("Invalid API key"),
+    } as unknown as Response;
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(forbiddenResponse));
+
+    const badClient = new VeniceClient({
+      apiKey: "invalid-key",
+      baseUrl: "https://api.venice.ai/api/v1",
+    });
+
+    await expect(
+      badClient.chat("llama-3.3-70b", [{ role: "user", content: "test" }])
+    ).rejects.toThrow("Venice API error 403: Invalid API key");
+  });
 });

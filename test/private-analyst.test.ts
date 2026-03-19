@@ -161,4 +161,73 @@ describe("PrivateAnalyst", () => {
       "deepseek-r1-671b"
     );
   });
+
+  it("should handle empty portfolio with no token balances", async () => {
+    const portfolio: PortfolioData = {
+      walletAddress: "0x0000000000000000000000000000000000000000",
+      chainId: 8453,
+      balances: [],
+      nativeBalance: "0",
+      timestamp: Date.now(),
+    };
+
+    (mockVeniceClient.privateQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      makeMockVeniceResponse('{"action":"deposit","confidence":0.9,"reasoning":"Empty portfolio, consider depositing funds"}')
+    );
+
+    const result = await analyst.analyzePortfolio(portfolio);
+    expect(result.action).toBe("deposit");
+    expect(result.confidence).toBe(0.9);
+    expect(result.privateInference).toBe(true);
+  });
+
+  it("should handle large portfolio with 100 tokens", async () => {
+    const balances = Array.from({ length: 100 }, (_, i) => ({
+      symbol: `TOKEN${i}`,
+      address: `0x${"0".repeat(39)}${i.toString(16).padStart(1, "0")}` as `0x${string}`,
+      balance: (Math.random() * 100).toFixed(4),
+      decimals: 18,
+    }));
+
+    const portfolio: PortfolioData = {
+      walletAddress: "0x1234567890abcdef1234567890abcdef12345678",
+      chainId: 8453,
+      balances,
+      nativeBalance: "10.0",
+      timestamp: Date.now(),
+    };
+
+    (mockVeniceClient.privateQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      makeMockVeniceResponse('{"action":"rebalance","confidence":0.65,"reasoning":"Over-diversified portfolio"}')
+    );
+
+    const result = await analyst.analyzePortfolio(portfolio);
+    expect(result.action).toBe("rebalance");
+    expect(result.confidence).toBe(0.65);
+    expect(result.privateInference).toBe(true);
+    expect(mockVeniceClient.privateQuery).toHaveBeenCalledWith(
+      expect.stringContaining("TOKEN0"),
+      "llama-3.3-70b"
+    );
+  });
+
+  it("should handle malformed LLM response with broken JSON", async () => {
+    (mockVeniceClient.privateQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      makeMockVeniceResponse('{"action":"sell","confidence":0.8,"reasoning":"truncated...')
+    );
+
+    const portfolio: PortfolioData = {
+      walletAddress: "0x1234567890abcdef1234567890abcdef12345678",
+      chainId: 8453,
+      balances: [],
+      nativeBalance: "1.0",
+      timestamp: Date.now(),
+    };
+
+    const result = await analyst.analyzePortfolio(portfolio);
+    expect(result.action).toBe("hold");
+    expect(result.confidence).toBe(0.5);
+    expect(result.reasoning).toContain("Could not parse");
+    expect(result.privateInference).toBe(true);
+  });
 });
